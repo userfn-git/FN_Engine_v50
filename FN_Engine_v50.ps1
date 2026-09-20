@@ -79,6 +79,7 @@ $taPath       = Join-Path $configDir "TAInput.ini"
 $taBackupPath = Join-Path $backupDir "TAInput.ini.bak"
 
 $global:isEngineHooked = $false
+$script:cachedGHubInstallPath = $null
 
 function Safe-UnlockFile ($fileTarget) {
     if (Test-Path $fileTarget) {
@@ -92,6 +93,10 @@ function Safe-UnlockFile ($fileTarget) {
 }
 
 function Get-GHubPath {
+    if ($script:cachedGHubInstallPath) {
+        return $script:cachedGHubInstallPath
+    }
+
     $uninstallKeys = @(
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
@@ -99,7 +104,8 @@ function Get-GHubPath {
     foreach ($key in $uninstallKeys) {
         $found = Get-ItemProperty $key -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*Logitech G HUB*" }
         if ($found -and $found.InstallLocation -and (Test-Path $found.InstallLocation)) {
-            return $found.InstallLocation
+            $script:cachedGHubInstallPath = $found.InstallLocation
+            return $script:cachedGHubInstallPath
         }
     }
     $commonPaths = @(
@@ -109,7 +115,10 @@ function Get-GHubPath {
         "$env:LOCALAPPDATA\Programs\LGHUB"
     )
     foreach ($p in $commonPaths) {
-        if (Test-Path (Join-Path $p "lghub.exe")) { return $p }
+        if (Test-Path (Join-Path $p "lghub.exe")) {
+            $script:cachedGHubInstallPath = $p
+            return $script:cachedGHubInstallPath
+        }
     }
     return $null
 }
